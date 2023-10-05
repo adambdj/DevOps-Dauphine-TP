@@ -142,30 +142,87 @@ AH00558: apache2: Could not reliably determine the server's fully qualified doma
 172.18.0.1 - - [05/Oct/2023:09:20:14 +0000] "GET / HTTP/1.1" 302 235 "-" "curl/7.74.0"
 172.18.0.1 - - [05/Oct/2023:09:21:43 +0000] "GET / HTTP/1.1" 302 235 "-" "curl/7.74.0"
 
-
 ```
    4. Utilisez l'aperçu web pour afficher le résultat du navigateur qui se connecte à votre container wordpress
       1. Utiliser la fonction `Aperçu sur le web`
         ![web_preview](images/wordpress_preview.png)
       2. Modifier le port si celui choisi n'est pas `8000`
       3. Une fenètre s'ouvre, que voyez vous ?
+```
+Réponse: 
+Page de setup wordpress :
+
+"
+WordPress
+Select a default language
+Select a default language
+"
+```      
 
 4. A partir de la documentation, remarquez les paramètres requis pour la configuration de la base de données.
 
+```
+wp-config.php :
+
+DB_NAME
+DB_USER
+DB_PASSWORD
+DB_HOST
+DB_CHARSET
+DB_COLLATE 
+```
+
 5. Dans la partie 1 du TP (si pas déjà fait), nous allons créer cette base de donnée. Dans cette partie 2 nous allons créer une image docker qui utilise des valeurs spécifiques de paramètres pour la base de données.
    1. Créer un Dockerfile
+```
+touch Dockerfile
+
+contenu :
+FROM wordpress:latest
+
+ENV WORDPRESS_DB_HOST=0.0.0.0
+ENV WORDPRESS_DB_USER=wordpress
+ENV WORDPRESS_DB_PASSWORD=ilovedevops
+ENV WORDPRESS_DB_NAME=wordpress
+
+
+
+```   
    2. Spécifier les valeurs suivantes pour la base de données à l'aide de l'instruction `ENV` (voir [ici](https://stackoverflow.com/questions/57454581/define-environment-variable-in-dockerfile-or-docker-compose)):
         - `WORDPRESS_DB_USER=wordpress`
         - `WORDPRESS_DB_PASSWORD=ilovedevops`
         - `WORDPRESS_DB_NAME=wordpress`
         - `WORDPRESS_DB_HOST=0.0.0.0`
    3. Construire l'image docker.
+```
+docker build -t my-custom-wordpress:latest .
+
+```
    4. Lancer une instance de l'image, ouvrez un shell. Vérifier le résultat de la commande `echo $WORDPRESS_DB_PASSWORD`
+
+```
+docker run -it --rm my-custom-wordpress:latest /bin/bash
+echo $WORDPRESS_DB_PASSWORD
+>ilovedevops
+```
 
 6. Pipeline d'Intégration Continue (CI):
    1. Créer un dépôt de type `DOCKER` sur artifact registry (si pas déjà fait, sinon utiliser celui appelé `website-tools`)
    2. Créer une configuration cloudbuild pour construire l'image docker et la publier sur le depôt Artifact Registry
+```
+   Réponse : 
+   steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'us-central1-docker.pkg.dev/devops4-401021/website-tools/image-wordpress', '.' ]
+
+images :
+- 'us-central1-docker.pkg.dev/devops4-401021/website-tools/image-wordpress'
+```
    3. Envoyer (`submit`) le job sur Cloud Build et vérifier que l'image a bien été créée
+   ```
+   gcloud builds submit --config cloudbuild.yaml .
+
+   ```
 
 ## Partie 3 : Déployer Wordpress sur Cloud Run 🔥
 
@@ -178,8 +235,24 @@ Notre but, ne l'oublions pas est de déployer wordpress sur Cloud Run !
 1. Rendez vous sur : https://console.cloud.google.com/sql/instances/main-instance/connections/summary?
    L'instance de base données dispose d'une `Adresse IP publique`. Nous allons nous servir de cette valeur pour configurer notre image docker Wordpress qui s'y connectera.
 
+```
+changer dockerFile : ENV WORDPRESS_DB_HOST=34.31.51.179
+
+```
+
 2. Reprendre le Dockerfile de la [Partie 2](#partie-2--docker) et le modifier pour que `WORDPRESS_DB_HOST` soit défini avec l'`Adresse IP publique` de notre instance de base de donnée.
 3. Reconstruire notre image docker et la pousser sur notre Artifact Registry en utilisant cloud build
+
+```
+gcloud builds submit --config cloudbuild.yaml .
+
+pour deployer : gcloud run deploy wordpress-service \
+    --image=us-central1-docker.pkg.dev/devops4-401021/website-tools/my-custom-wordpress:latest \
+    --platform managed \
+    --region=us-central1 \
+    --allow-unauthenticated
+
+```
 
 ### Déployer notre image docker sur Cloud Run
 
