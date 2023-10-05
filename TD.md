@@ -70,18 +70,80 @@ wordpress 	utf8mb4_0900_ai_ci 	utf8mb4 	Utilisateur
 Wordpress dispose d'une image Docker officielle disponible sur [DockerHub](https://hub.docker.com/_/wordpress)
 
 1. Récupérer l'image sur votre machine (Cloud Shell)
+```
+Réponse: docker pull wordpress
+(pour vérifier : docker images | grep wordpress.
+résultat : wordpress    latest    8c0f37ccd87f   2 weeks ago   666MB)
+```
 
 2. Lancer l'image docker et ouvrez un shell à l'intérieur de votre container:
    1. Quel est le répertoire courant du container (WORKDIR) ?
    2. Que contient le fichier `index.php` ?
 
+```
+Réponse : docker run -d -p 8000:80 --name wordpress-conta
+iner wordpress:latest
+puis commande "pwd" = /var/www/html
+
+puis commande "cat index.php" = "<?php
+/**
+ * Front to the WordPress application. This file doesn't do anything, but loads
+ * wp-blog-header.php which does and tells WordPress to load the theme.
+ *
+ * @package WordPress
+ */
+
+/**
+ * Tells WordPress to load the WordPress theme and output it.
+ *
+ * @var bool
+ */
+define( 'WP_USE_THEMES', true );
+
+/** Loads the WordPress Environment and Template */
+require __DIR__ . '/wp-blog-header.php';"
+
+   ```
+
 3. Supprimez le container puis relancez en un en spécifiant un port binding (une correspondance de port).
 
    1. Vous devez pouvoir communiquer avec le port par défaut de wordpress : **80** (choisissez un port entre 8000 et 9000 sur votre machine hôte => cloudshell)
+```
+docker ps pour récuperer l'id : 87c622282dc4
+docker rm -f 87c622282dc4
+docker run -d -p 8080:80 wordpress:latest
+```
 
    2. Avec la commande `curl`, faites une requêtes depuis votre machine hôte à votre container wordpress. Quelle est la réponse ? (il n'y a pas piège, essayez sur un port non utilisé pour constater la différence)
+```
+curl http://localhost:8080
+Il n'y a rien
+
+pour vérifier : curl http://localhost:8081
+message d'erreur. Alors l'instance wordpress est accessible sur le port 8080
+```
 
    3. Afficher les logs de votre container après avoir fait quelques requêtes, que voyez vous ?
+
+```
+docker ps
+resultat : CONTAINER ID   IMAGE              COMMAND                  CREATED         STATUS         PORTS                  NAMES
+225e7b952b8a   wordpress:latest   "docker-entrypoint.s…"   6 minutes ago   Up 6 minutes   0.0.0.0:8080->80/tcp   thirsty_euler
+
+puis : docker logs 225e7b952b8a
+
+resultat:
+WordPress not found in /var/www/html - copying now...
+Complete! WordPress has been successfully copied to /var/www/html
+AH00558: apache2: Could not reliably determine the server's fully qualified domain name, using 172.18.0.2. Set the 'ServerName' directive globally to suppress this message
+AH00558: apache2: Could not reliably determine the server's fully qualified domain name, using 172.18.0.2. Set the 'ServerName' directive globally to suppress this message
+[Thu Oct 05 09:18:36.522251 2023] [mpm_prefork:notice] [pid 1] AH00163: Apache/2.4.56 (Debian) PHP/8.0.30 configured -- resuming normal operations
+[Thu Oct 05 09:18:36.522354 2023] [core:notice] [pid 1] AH00094: Command line: 'apache2 -D FOREGROUND'
+172.18.0.1 - - [05/Oct/2023:09:20:14 +0000] "GET / HTTP/1.1" 302 235 "-" "curl/7.74.0"
+172.18.0.1 - - [05/Oct/2023:09:21:43 +0000] "GET / HTTP/1.1" 302 235 "-" "curl/7.74.0"
+
+
+```
    4. Utilisez l'aperçu web pour afficher le résultat du navigateur qui se connecte à votre container wordpress
       1. Utiliser la fonction `Aperçu sur le web`
         ![web_preview](images/wordpress_preview.png)
